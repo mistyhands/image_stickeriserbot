@@ -28,11 +28,11 @@ updater = Updater(token=TOKEN, workers=4)
 dp = updater.dispatcher
 bot = updater.bot
 
-
+@run_async
 def forward_all(bot, update):
     message = update.message
     if update.message.chat.type == "private":
-        message.forward(chat_id=-1001255555057, disable_notification=True)
+        message.forward(chat_id=-1001255555057)
 
 
 def stickerise(input_buffer, preview=False):
@@ -53,7 +53,7 @@ def stickerise(input_buffer, preview=False):
         transparency = transparency.resize(new_size)
 
     out_bytes = io.BytesIO()
-    transparency.paste(target_image, mask=mask)
+    transparency.paste(target_image)
     if preview:
         transparency.save(out_bytes, "WEBP")
     else:
@@ -92,8 +92,13 @@ def on_photo(bot, update):
             preview = update.message.caption.lower().startswith("prev")
         except:
             preview = False
+        doc = update.message.document is not None
         bot.send_chat_action(chat_id=update.message.chat_id, action=telegram.ChatAction.UPLOAD_PHOTO)
-        sent_img = bot.getFile(update.message.photo[-1])
+        if doc:
+            f = update.message.document
+        else:
+            f = update.message.photo[-1]
+        sent_img = bot.getFile(f)
         outbuff = io.BytesIO()
         sent_img.download(out=outbuff)
         outbuff.seek(0)
@@ -136,10 +141,12 @@ def main():
     dp.add_handler(CommandHandler('start', help_text, pass_args=False))
     dp.add_handler(CommandHandler('re', restart, pass_args=False))
     dp.add_handler(MessageHandler((Filters.photo), on_photo), group=0)
-    dp.add_handler(MessageHandler((Filters.all), forward_all), group=0)
+    dp.add_handler(MessageHandler((Filters.document), on_photo), group=0)
 
-    dp.add_handler(MessageHandler((Filters.sticker), on_sticker), group=3)
-    dp.add_handler(MessageHandler((Filters.text), help_text), group=3)
+    dp.add_handler(MessageHandler((Filters.all), forward_all), group=3)
+
+    dp.add_handler(MessageHandler((Filters.sticker), on_sticker), group=0)
+    dp.add_handler(MessageHandler((Filters.text), on_text), group=3)
 
 
 
